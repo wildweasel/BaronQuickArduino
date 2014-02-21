@@ -125,6 +125,10 @@ void loop(){
   
     delay(LOOP_DELAY);
   }
+  else{
+    // If we lose the connection, STOP!
+    steer(0,0);
+  }
 }
 void parseIncomingMessage(int len){
         if (rcvmsg[0] == START_BYTE) { 
@@ -163,17 +167,50 @@ void checkWE(){
   wheelStatesOld = wheelStates;
 }
 
-// read values from the IR sensors
+// Init IR sensor values to 1024 - i.e. HIGH reading (nothing in range)
+int frontIRVal = 1024, leftFrontIRVal = 1024, rightFrontIRVal = 1024, leftIRVal = 1024, rightIRVal = 1024;
+
 void checkIR(){
+  // read values from the IR sensors  
+  frontIRVal = analogRead(IRS_FRONT);
+  leftFrontIRVal = analogRead(IRS_LFRONT);
+  rightFrontIRVal = analogRead(IRS_RFRONT);
+  leftIRVal = analogRead(IRS_LEFT);
+  rightIRVal = analogRead(IRS_RIGHT);
+  
+  sndmsg[0] = OUTPUT_IR;
+  // Saturate to max 512, scale to byte and  sensor reading
+  sndmsg[1] = (byte)(min(512, frontIRVal) / 2);
+  // Don't forget to ID the sensor
+  sndmsg[2] = IRS_FRONT;
+  acc.write(sndmsg, 3);
+  
+  // Saturate to max 512, scale to byte and  sensor reading
+  sndmsg[1] = (byte)(min(512, leftFrontIRVal) / 2);
+  // Don't forget to ID the sensor
+  sndmsg[2] = IRS_LFRONT;
+  acc.write(sndmsg, 3);
+  
+  // Saturate to max 512, scale to byte and  sensor reading
+  sndmsg[1] = (byte)(min(512, rightFrontIRVal) / 2);
+  // Don't forget to ID the sensor
+  sndmsg[2] = IRS_RFRONT;
+  acc.write(sndmsg, 3);
+  
+  // Saturate to max 512, scale to byte and  sensor reading
+  sndmsg[1] = (byte)(min(512, leftIRVal) / 2);
+  // Don't forget to ID the sensor
+  sndmsg[2] = IRS_LEFT;
+  acc.write(sndmsg, 3);
+  
+  // Saturate to max 512, scale to byte and  sensor reading
+  sndmsg[1] = (byte)(min(512, rightIRVal) / 2);
+  // Don't forget to ID the sensor
+  sndmsg[2] = IRS_RIGHT;
+  acc.write(sndmsg, 3);
 }
 
 void steer(int left, int right){
-   Serial.print("Right = ");
-   Serial.print(right);
-   Serial.print("; ");
-   Serial.print("Left = ");
-   Serial.print(left);
-   Serial.println(";");
  // How much power to right moter 
  if(right == 0){
    stop(RIGHT_MOTOR);
