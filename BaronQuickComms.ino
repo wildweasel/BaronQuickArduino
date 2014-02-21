@@ -127,7 +127,8 @@ void loop(){
   }
   else{
     // If we lose the connection, STOP!
-    steer(0,0);
+    left = right = 0;
+    steer();
   }
 }
 void parseIncomingMessage(int len){
@@ -139,7 +140,7 @@ void parseIncomingMessage(int len){
       // The move trigger on the Android is sensitive.
       // Only worry about when the values change
        if(oldRight != right || oldLeft != left){
-          steer(left, right);
+          steer();
           oldLeft = left;
           oldRight = right;
         }
@@ -161,7 +162,9 @@ void checkWE(){
   if(wheelStates != wheelStatesOld){
     sndmsg[0] = OUTPUT_WE;
     sndmsg[1] = wheelStates;
-    // ignore [2] in this message type
+    // which way are the wheels turning?
+    // encode 1 positive, 0 negative, right wheel LSB, left wheel LSB+1
+    sndmsg[2] =  (left > 0)*2 +(right > 0);
     acc.write(sndmsg, 3);
   }
   wheelStatesOld = wheelStates;
@@ -210,7 +213,7 @@ void checkIR(){
   acc.write(sndmsg, 3);
 }
 
-void steer(int left, int right){
+void steer(){
  // How much power to right moter 
  if(right == 0){
    stop(RIGHT_MOTOR);
