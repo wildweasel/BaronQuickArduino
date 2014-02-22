@@ -146,7 +146,7 @@ void parseIncomingMessage(int len){
         }
 }
 
-// Track the WheelEncoder states
+// Track the WheelEncoder states 
 int wheelStatesOld = 0;
 // 0 = both wheels blocked
 // 1 = right wheel free, left wheel blocked
