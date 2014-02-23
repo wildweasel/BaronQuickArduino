@@ -241,6 +241,7 @@ void steer(){
 
 // Motor goes forward at a given rate (from 0-255)
 void forward(int rate, int offset){
+  rate = constrain(rate, 0, 100);
   digitalWrite(EN_R+offset, LOW);
   digitalWrite(MC1_R+offset, HIGH);
   digitalWrite(MC2_R+offset, LOW);
@@ -249,6 +250,7 @@ void forward(int rate, int offset){
 
 // Motor goes backward at a given rate (from 0-255)
 void reverse(int rate, int offset){
+  rate = constrain(rate, 0, 100);
   digitalWrite(EN_R+offset, LOW);
   digitalWrite(MC1_R+offset, LOW);
   digitalWrite(MC2_R+offset, HIGH);
