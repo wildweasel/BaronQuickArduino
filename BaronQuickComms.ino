@@ -107,16 +107,17 @@ void loop(){
       int len = acc.read(rcvmsg, sizeof(rcvmsg), 1);    
       
       // If we've got a message...
-      if (adkCounter == 0 && len > 0) {    
+     // if (adkCounter == 0 && len > 0) {    
+       if(len > 0){  
        // ...parse it     
         parseIncomingMessage(len);    
     }
     
-    if(weCounter == 0)
-      checkWE();
+    //if(weCounter == 0)
+    //  checkWE();
       
-    if(irCounter == 0)
-      checkIR();
+    //if(irCounter == 0)
+    //  checkIR();
       
     // advance the counters (modulo their intervals)
     ++adkCounter %= ADK_INTERVAL;
@@ -136,7 +137,8 @@ void parseIncomingMessage(int len){
         right = rcvmsg[1];
         left = rcvmsg[2];
       }      
-  
+    Serial.println("here");
+    Serial.println(right);
       // The move trigger on the Android is sensitive.
       // Only worry about when the values change
        if(oldRight != right || oldLeft != left){
@@ -214,7 +216,11 @@ void checkIR(){
 }
 
 void steer(){
- // How much power to right moter 
+  Serial.print("Right Motor: ");
+  Serial.print(right);  
+  Serial.print(", Left Motor: ");
+  Serial.println(left);
+  // How much power to right moter 
  if(right == 0){
    stop(RIGHT_MOTOR);
  }
@@ -241,7 +247,7 @@ void steer(){
 
 // Motor goes forward at a given rate (from 0-255)
 void forward(int rate, int offset){
-  rate = constrain(rate, 0, 100);
+  rate = map(rate, 0, 100, 0, 255);
   digitalWrite(EN_R+offset, LOW);
   digitalWrite(MC1_R+offset, HIGH);
   digitalWrite(MC2_R+offset, LOW);
@@ -250,7 +256,7 @@ void forward(int rate, int offset){
 
 // Motor goes backward at a given rate (from 0-255)
 void reverse(int rate, int offset){
-  rate = constrain(rate, 0, 100);
+  rate = map(rate, 0, 100, 0, 255);
   digitalWrite(EN_R+offset, LOW);
   digitalWrite(MC1_R+offset, LOW);
   digitalWrite(MC2_R+offset, HIGH);
