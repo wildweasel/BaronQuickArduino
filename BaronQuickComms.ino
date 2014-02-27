@@ -245,18 +245,26 @@ void steer(){
  }
 }
 
-// Motor goes forward at a given rate (from 0-255)
+// Motor goes forward 
 void forward(int rate, int offset){
-  rate = map(rate, 0, 100, 0, 255);
+  // We should be getting a percentage of total power to use on 
+  // this motor (i.e. 0-100).  Just to be safe, clip to that range,
+  // then map to the 255 available motor power levels.
+  rate = map(constrain(rate, 0, 100), 0, 100, 0, 255);
+
   digitalWrite(EN_R+offset, LOW);
   digitalWrite(MC1_R+offset, HIGH);
   digitalWrite(MC2_R+offset, LOW);
   analogWrite(EN_R+offset, rate);
 }
 
-// Motor goes backward at a given rate (from 0-255)
+// Motor goes backward
 void reverse(int rate, int offset){
-  rate = map(rate, 0, 100, 0, 255);
+  // We should be getting a percentage of total power to use on 
+  // this motor (i.e. 0-100).  Just to be safe, clip to that range,
+  // then map to the 255 available motor power levels.
+  rate = map(constrain(rate, 0, 100), 0, 100, 0, 255);
+  
   digitalWrite(EN_R+offset, LOW);
   digitalWrite(MC1_R+offset, LOW);
   digitalWrite(MC2_R+offset, HIGH);
