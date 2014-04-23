@@ -15,20 +15,25 @@ const int IRS_LEFT = 14;
 const int IRS_RIGHT = 15;
 
 // Right side motors drive output pins
- const int EN_R = 6; // Right Side:  Half Bridge 1 enable
- const int MC1_R = 3; // Right Side:  Motor Control 1
- const int MC2_R = 2; // Roght Side:  Motor Control 2
+// const int EN_R = 8; // Right Side:  Half Bridge 1 enable
+// const int MC1_R = 9; // Right Side:  Motor Control 1
+// const int MC2_R = 10; // Roght Side:  Motor Control 2
 
 // Left Side Motors drive output pins
- const int EN_L = 8; // Left Side:  Half Bridge 1 enable
- const int MC1_L = 5; // Left Side:  Motor Control 1
- const int MC2_L = 4; // Left Side:  Motor Control 2
+// const int EN_L = 2; // Left Side:  Half Bridge 1 enable
+// const int MC1_L = 3; // Left Side:  Motor Control 1
+// const int MC2_L = 4; // Left Side:  Motor Control 2
  
-// Note that the Left side motor pins are each exactly 2 more than their
+ // Note that the Left side motor pins are each exactly 2 more than their
 // corresponding right side counterpart.  This lets us define an offset to 
 // select a motor
 const int LEFT_MOTOR = 2;
-const int RIGHT_MOTOR = 0;
+const int RIGHT_MOTOR = 8;
+
+// The pins are in the same order
+const int EN = 0; // Left Side:  Half Bridge 1 enable
+const int MC1 = 1; // Left Side:  Motor Control 1
+const int MC2 = 2; // Left Side:  Motor Control 2
  
 // Input message buffer (global avoid reallocation on loop)
 byte rcvmsg[3]; 
@@ -40,7 +45,7 @@ byte sndmsg[3];
 const byte START_BYTE = -2;
 
 // How many milliseconds between I/O reads/writes?
-const int LOOP_DELAY = 15;
+const int LOOP_DELAY = 10;
 
 // How many loops between ADK comms quierys?
 const int ADK_INTERVAL = 1;
@@ -84,12 +89,12 @@ void setup(){
   
   
    // set up the h-bridge pins as outputs
-    pinMode(MC1_R, OUTPUT);
-    pinMode(MC2_R, OUTPUT);
-    pinMode(EN_R, OUTPUT);
-    pinMode(MC1_L, OUTPUT);
-    pinMode(MC2_L, OUTPUT);
-    pinMode(EN_L, OUTPUT);
+    pinMode(RIGHT_MOTOR + MC1, OUTPUT);
+    pinMode(RIGHT_MOTOR + MC2, OUTPUT);
+    pinMode(RIGHT_MOTOR + EN, OUTPUT);
+    pinMode(LEFT_MOTOR + MC1, OUTPUT);
+    pinMode(LEFT_MOTOR + MC2, OUTPUT);
+    pinMode(LEFT_MOTOR + EN, OUTPUT);
     
   Serial.begin(115200);
   Serial.print("ready");                   
@@ -99,7 +104,7 @@ int right;
 int left;
 int oldRight = -101;
 int oldLeft = -101;
-
+int dummy =0;
 void loop(){
     if (acc.isConnected()) { 
   
@@ -109,10 +114,15 @@ void loop(){
       // If we've got a message...
      // if (adkCounter == 0 && len > 0) {    
        if(len > 0){  
+         Serial.print("m ");
        // ...parse it     
         parseIncomingMessage(len);    
     }
-    
+    else{
+      Serial.print(dummy);
+      dummy = (dummy+1) % 10;
+      Serial.print("x\n");
+    }
     //if(weCounter == 0)
     //  checkWE();
       
@@ -250,12 +260,14 @@ void forward(int rate, int offset){
   // We should be getting a percentage of total power to use on 
   // this motor (i.e. 0-100).  Just to be safe, clip to that range,
   // then map to the 255 available motor power levels.
-  rate = map(constrain(rate, 0, 100), 0, 100, 0, 255);
-
-  digitalWrite(EN_R+offset, LOW);
-  digitalWrite(MC1_R+offset, HIGH);
-  digitalWrite(MC2_R+offset, LOW);
-  analogWrite(EN_R+offset, rate);
+  rate = map(constrain(rate, 0, 100), 0, 100, 0, 150);
+  Serial.print(offset==2 ? "left" : "right");
+  Serial.print(" wheels forward at ");
+  Serial.println(rate);
+  digitalWrite(EN+offset, LOW);
+  digitalWrite(MC1+offset, HIGH);
+  digitalWrite(MC2+offset, LOW);
+  analogWrite(EN+offset, rate);
 }
 
 // Motor goes backward
@@ -263,18 +275,18 @@ void reverse(int rate, int offset){
   // We should be getting a percentage of total power to use on 
   // this motor (i.e. 0-100).  Just to be safe, clip to that range,
   // then map to the 255 available motor power levels.
-  rate = map(constrain(rate, 0, 100), 0, 100, 0, 255);
+  rate = map(constrain(rate, 0, 100), 0, 100, 0, 150);
   
-  digitalWrite(EN_R+offset, LOW);
-  digitalWrite(MC1_R+offset, LOW);
-  digitalWrite(MC2_R+offset, HIGH);
-  analogWrite(EN_R+offset, rate);
+  digitalWrite(EN+offset, LOW);
+  digitalWrite(MC1+offset, LOW);
+  digitalWrite(MC2+offset, HIGH);
+  analogWrite(EN+offset, rate);
 }
 
 // Motor stop
 void stop(int offset){
-  digitalWrite(EN_R+offset, LOW);
-  digitalWrite(MC1_R+offset, LOW);
-  digitalWrite(MC2_R+offset, LOW);
-  digitalWrite(EN_R+offset, HIGH);
+  digitalWrite(EN+offset, LOW);
+  digitalWrite(MC1+offset, LOW);
+  digitalWrite(MC2+offset, LOW);
+  digitalWrite(EN+offset, HIGH);
 }
