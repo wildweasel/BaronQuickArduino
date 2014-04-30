@@ -4,27 +4,17 @@
 #include <AndroidAccessory.h> 
 
 // Wheel encoder input pins
-const int LW_ENCODER = 9;
+const int LW_ENCODER = 2;
 const int RW_ENCODER = 10;
 
 // IR Sensor input pins
-const int IRS_FRONT = 11;
-const int IRS_LFRONT = 12;
-const int IRS_RFRONT = 13;
-const int IRS_LEFT = 14;
-const int IRS_RIGHT = 15;
-
-// Right side motors drive output pins
-// const int EN_R = 8; // Right Side:  Half Bridge 1 enable
-// const int MC1_R = 9; // Right Side:  Motor Control 1
-// const int MC2_R = 10; // Roght Side:  Motor Control 2
-
-// Left Side Motors drive output pins
-// const int EN_L = 2; // Left Side:  Half Bridge 1 enable
-// const int MC1_L = 3; // Left Side:  Motor Control 1
-// const int MC2_L = 4; // Left Side:  Motor Control 2
+const int IRS_FRONT = 4;
+const int IRS_LFRONT = 1;
+const int IRS_RFRONT = 8;
+const int IRS_LEFT = 0;
+const int IRS_RIGHT = 13;
  
- // Note that the Left side motor pins are each exactly 2 more than their
+// Note that the Left side motor pins are each exactly 2 more than their
 // corresponding right side counterpart.  This lets us define an offset to 
 // select a motor
 const int LEFT_MOTOR = 2;
@@ -39,7 +29,7 @@ const int MC2 = 2; // Left Side:  Motor Control 2
 byte rcvmsg[3]; 
 
 // Output message buffer
-byte sndmsg[3];
+byte sndmsg[6];
 
 // Start byte for reading input message
 const byte START_BYTE = -2;
@@ -50,11 +40,10 @@ const int LOOP_DELAY = 10;
 // How many loops between ADK comms quierys?
 const int ADK_INTERVAL = 1;
 // How mnay loops between Wheel encoder queries?
-const int WE_INTERVAL = 1;
+const int WE_INTERVAL = 2;
 // How many loops between IR sensor queries?
-const int IR_INTERVAL = 5;
+const int IR_INTERVAL = 20;
 
-int adkCounter = 0;
 int weCounter = 0;
 int irCounter = 0;
 
@@ -96,7 +85,7 @@ void setup(){
     pinMode(LEFT_MOTOR + MC2, OUTPUT);
     pinMode(LEFT_MOTOR + EN, OUTPUT);
     
-  Serial.begin(115200);
+  Serial.begin(9600);
   Serial.print("ready");                   
 }
 
@@ -110,27 +99,19 @@ void loop(){
   
       //read the received data into the byte array  
       int len = acc.read(rcvmsg, sizeof(rcvmsg), 1);    
-      
-      // If we've got a message...
-     // if (adkCounter == 0 && len > 0) {    
-       if(len > 0){  
-         Serial.print("m ");
+        
+      if(len > 0){  
        // ...parse it     
-        parseIncomingMessage(len);    
-    }
-    else{
-      Serial.print(dummy);
-      dummy = (dummy+1) % 10;
-      Serial.print("x\n");
-    }
-    //if(weCounter == 0)
-    //  checkWE();
+       parseIncomingMessage(len);    
+      }
+
+    if(weCounter == 0)
+      checkWE();
       
-    //if(irCounter == 0)
-    //  checkIR();
+    if(irCounter == 0)
+      checkIR();
       
     // advance the counters (modulo their intervals)
-    ++adkCounter %= ADK_INTERVAL;
     ++weCounter %= WE_INTERVAL;
     ++irCounter %= IR_INTERVAL;
   
@@ -147,8 +128,7 @@ void parseIncomingMessage(int len){
         right = rcvmsg[1];
         left = rcvmsg[2];
       }      
-    Serial.println("here");
-    Serial.println(right);
+
       // The move trigger on the Android is sensitive.
       // Only worry about when the values change
        if(oldRight != right || oldLeft != left){
@@ -176,8 +156,12 @@ void checkWE(){
     sndmsg[1] = wheelStates;
     // which way are the wheels turning?
     // encode 1 positive, 0 negative, right wheel LSB, left wheel LSB+1
-    sndmsg[2] =  (left > 0)*2 +(right > 0);
-    acc.write(sndmsg, 3);
+    sndmsg[2] =  (left < 128)*2 +(right < 128);
+    
+    Serial.print(sndmsg[1]);Serial.print(", ");
+    Serial.print(sndmsg[2]);Serial.print("\n");
+  
+    acc.write(sndmsg, 6);
   }
   wheelStatesOld = wheelStates;
 }
@@ -193,43 +177,46 @@ void checkIR(){
   leftIRVal = analogRead(IRS_LEFT);
   rightIRVal = analogRead(IRS_RIGHT);
   
+  Serial.print(leftIRVal);Serial.print(", ");
+  Serial.print(leftFrontIRVal);Serial.print(", ");
+  Serial.print(frontIRVal);Serial.print(", ");
+  Serial.print(rightFrontIRVal);Serial.print(", ");
+  Serial.print(rightIRVal);Serial.print("\n");
+  
+  // ID the message
   sndmsg[0] = OUTPUT_IR;
-  // Saturate to max 512, scale to byte and  sensor reading
-  sndmsg[1] = (byte)(min(512, frontIRVal) / 2);
-  // Don't forget to ID the sensor
-  sndmsg[2] = IRS_FRONT;
-  acc.write(sndmsg, 3);
   
+  // Send data
   // Saturate to max 512, scale to byte and  sensor reading
-  sndmsg[1] = (byte)(min(512, leftFrontIRVal) / 2);
-  // Don't forget to ID the sensor
-  sndmsg[2] = IRS_LFRONT;
-  acc.write(sndmsg, 3);
   
-  // Saturate to max 512, scale to byte and  sensor reading
-  sndmsg[1] = (byte)(min(512, rightFrontIRVal) / 2);
-  // Don't forget to ID the sensor
-  sndmsg[2] = IRS_RFRONT;
-  acc.write(sndmsg, 3);
+  // left
+  sndmsg[1] = (byte)(min(510, leftIRVal) / 2);
+  // left center
+  sndmsg[2] = (byte)(min(510, leftFrontIRVal) / 2);
+  // center
+  sndmsg[3] = (byte)(min(510, frontIRVal) / 2);
+  // right center
+  sndmsg[4] = (byte)(min(510, rightFrontIRVal) / 2);
+  // right
+  sndmsg[5] = (byte)(min(510, rightIRVal) / 2);
   
-  // Saturate to max 512, scale to byte and  sensor reading
-  sndmsg[1] = (byte)(min(512, leftIRVal) / 2);
-  // Don't forget to ID the sensor
-  sndmsg[2] = IRS_LEFT;
-  acc.write(sndmsg, 3);
+  Serial.print(sndmsg[1]);Serial.print(", ");
+  Serial.print(sndmsg[2]);Serial.print(", ");
+  Serial.print(sndmsg[3]);Serial.print(", ");
+  Serial.print(sndmsg[4]);Serial.print(", ");
+  Serial.print(sndmsg[5]);Serial.print("\n");
   
-  // Saturate to max 512, scale to byte and  sensor reading
-  sndmsg[1] = (byte)(min(512, rightIRVal) / 2);
-  // Don't forget to ID the sensor
-  sndmsg[2] = IRS_RIGHT;
-  acc.write(sndmsg, 3);
+  // send
+  acc.write(sndmsg, 6);
 }
 
 void steer(){
-  Serial.print("Right Motor: ");
-  Serial.print(right);  
-  Serial.print(", Left Motor: ");
-  Serial.println(left);
+  if(right != 0 && left != 0){
+    Serial.print("Right Motor: ");
+    Serial.print(right);  
+    Serial.print(", Left Motor: ");
+    Serial.println(left);
+  }
   // How much power to right moter 
  if(right == 0){
    stop(RIGHT_MOTOR);
