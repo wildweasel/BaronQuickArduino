@@ -40,19 +40,24 @@ const int LOOP_DELAY = 10;
 // How many loops between ADK comms quierys?
 const int ADK_INTERVAL = 1;
 // How mnay loops between Wheel encoder queries?
-const int WE_INTERVAL = 2;
+const int WE_Q_INTERVAL = 2;
 // How many loops between IR sensor queries?
-const int IR_INTERVAL = 20;
+const int IR_INTERVAL = 2000;
+// How many loops between Wheel encoder message sends?
+const int WE_S_INTERVAL = 200;
 
-int weCounter = 0;
+int weQCounter = 0;
 int irCounter = 0;
+int weSCounter = 0;
 
 // Output message types
-const byte OUTPUT_IR = -3;
-const byte OUTPUT_WE = -4;
+const byte OUTPUT_IR = -126;
+const byte OUTPUT_WE = -127;
 
 // At what encode sensor reading level do we consider a wheel blocked?
 const int WE_THRESH = 200;
+boolean leftWheelBlocked;
+boolean rightWheelBlocked;
 
 // ADK device ID
 AndroidAccessory acc("Manufacturer", 
@@ -86,7 +91,12 @@ void setup(){
     pinMode(LEFT_MOTOR + EN, OUTPUT);
     
   Serial.begin(9600);
-  Serial.print("ready");                   
+  Serial.print("ready");     
+
+  // set the starting wheel encoder states:  
+  leftWheelBlocked = analogRead(LW_ENCODER) > WE_THRESH;
+  rightWheelBlocked = analogRead(RW_ENCODER) > WE_THRESH;
+  
 }
 
 int right;
@@ -105,14 +115,18 @@ void loop(){
        parseIncomingMessage(len);    
       }
 
-    if(weCounter == 0)
+    if(weQCounter == 0)
       checkWE();
+      
+    if(weSCounter == 0)
+      sendWE();
       
     if(irCounter == 0)
       checkIR();
       
     // advance the counters (modulo their intervals)
-    ++weCounter %= WE_INTERVAL;
+    ++weQCounter %= WE_Q_INTERVAL;
+    ++weSCounter %= WE_S_INTERVAL;
     ++irCounter %= IR_INTERVAL;
   
     delay(LOOP_DELAY);
@@ -138,32 +152,50 @@ void parseIncomingMessage(int len){
         }
 }
 
-// Track the WheelEncoder states 
-int wheelStatesOld = 0;
-// 0 = both wheels blocked
-// 1 = right wheel free, left wheel blocked
-// 2 = left wheel free, right wheel blocked
-// 3 = both wheetls free
-// read values from the Wheel encoders - global to avoid extra allocations
-int wheelStates;
+int leftWheelTicks = 0;
+int rightWheelTicks = 0;
 // IMPORTANT:  THE SAMPLING FREQUENCY MUST BE AT LEAST TWICE THE SPEED AT
 // WHICH THE ENCODER CHANGES STATES
 void checkWE(){
-  wheelStates = 2*(analogRead(LW_ENCODER) > WE_THRESH) + (analogRead(RW_ENCODER) > WE_THRESH);
   
-  if(wheelStates != wheelStatesOld){
-    sndmsg[0] = OUTPUT_WE;
-    sndmsg[1] = wheelStates;
+  // The every tick a message method seems to overwhelm the Android IO.
+  // Track the ticks and send later
+  
+  if(leftWheelBlocked != analogRead(LW_ENCODER) > WE_THRESH){
     // which way are the wheels turning?
-    // encode 1 positive, 0 negative, right wheel LSB, left wheel LSB+1
-    sndmsg[2] =  (left < 128)*2 +(right < 128);
-    
-    Serial.print(sndmsg[1]);Serial.print(", ");
-    Serial.print(sndmsg[2]);Serial.print("\n");
-  
-    acc.write(sndmsg, 6);
+    if(left < 128)  //forward
+      leftWheelTicks++;
+    else            // backwards
+      leftWheelTicks--;
   }
-  wheelStatesOld = wheelStates;
+  
+  if(rightWheelBlocked != analogRead(RW_ENCODER) > WE_THRESH){
+    // which way are the wheels turning?
+    if(right < 128)  //forward
+      rightWheelTicks++;
+    else            // backwards
+      rightWheelTicks--;
+  }
+  
+  // update state
+  leftWheelBlocked = analogRead(LW_ENCODER) > WE_THRESH;
+  rightWheelBlocked = analogRead(RW_ENCODER) > WE_THRESH;
+}
+
+// gotta send at least once every 127 checks
+void sendWE(){
+  
+   sndmsg[0] = OUTPUT_WE;
+   sndmsg[1] = leftWheelTicks;
+   sndmsg[2] = rightWheelTicks;
+   
+   Serial.print("Left Ticks: ");Serial.print(sndmsg[1]);
+   Serial.print("; Right Ticks: ");Serial.println(sndmsg[2]);
+   acc.write(sndmsg, 6);
+  
+  // reset
+  leftWheelTicks = 0;
+  rightWheelTicks = 0;
 }
 
 // Init IR sensor values to 1024 - i.e. HIGH reading (nothing in range)
