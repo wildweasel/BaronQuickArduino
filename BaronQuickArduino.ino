@@ -29,7 +29,7 @@ const int MC2 = 2; // Left Side:  Motor Control 2
 byte rcvmsg[3]; 
 
 // Output message buffer
-byte sndmsg[6];
+byte sndmsg[64];
 
 // Start byte for reading input message
 const byte START_BYTE = -2;
@@ -191,7 +191,7 @@ void sendWE(){
    
    Serial.print("Left Ticks: ");Serial.print(sndmsg[1]);
    Serial.print("; Right Ticks: ");Serial.println(sndmsg[2]);
-   acc.write(sndmsg, 6);
+   acc.write(sndmsg, 64);
   
   // reset
   leftWheelTicks = 0;
@@ -239,7 +239,7 @@ void checkIR(){
   Serial.print(sndmsg[5]);Serial.print("\n");
   
   // send
-  acc.write(sndmsg, 6);
+  acc.write(sndmsg, 64);
 }
 
 void steer(){
